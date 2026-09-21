@@ -257,7 +257,7 @@ Tests/
 Packaging/
 ├── build-app.sh                   # Builds dist/Miniplayer(-Debug).app
 ├── Info.plist                     # Bundle ID, version, permission text
-└── AppIcon.icns                   # Placeholder icon
+└── AppIcon.icns                   # App icon
 ```
 
 ## Known limitations
@@ -271,7 +271,6 @@ Packaging/
 - Only the Pill can be resized. Progress is display-only, with no seeking.
 - The app is ad-hoc signed and not notarized, so first launch needs
   right-click → Open.
-- `Packaging/AppIcon.icns` is a placeholder made from the iPod skin's artwork.
 
 ## Roadmap
 
