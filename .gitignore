@@ -8,3 +8,6 @@
 DerivedData/
 .DS_Store
 dist/
+
+# Raw screen recordings used to make docs/demo.gif
+*.mov

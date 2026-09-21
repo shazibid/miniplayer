@@ -13,6 +13,19 @@ that stays on top of everything else.
 
 Not affiliated with, or endorsed by, Apple or Spotify.
 
+<p align="center">
+  <img src="docs/demo.gif" alt="Demo: resizing the pill, switching between the four skins, and browsing the iPod's Up Next queue" width="720">
+</p>
+<p align="center">
+  <img src="docs/pill-wide.png" alt="Glass Pill skin stretched wide, showing the progress bar" width="640">
+</p>
+<p align="center">
+  <img src="docs/cd.png" alt="CD Player skin" height="250">
+  <img src="docs/vinyl.png" alt="Vinyl Record skin" height="250">
+  <img src="docs/ipod.png" alt="iPod skin" height="250">
+  <img src="docs/ipod-queue.png" alt="iPod skin showing the Up Next queue" height="250">
+</p>
+
 ## At a glance
 
 - Shows the current track's title, artist, artwork, and elapsed/total time.
