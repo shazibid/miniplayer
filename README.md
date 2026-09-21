@@ -1,358 +1,275 @@
 # Miniplayer
 
-A tiny always-on-top desktop widget for macOS that shows what's currently
-playing in **Spotify** or **Apple Music** and lets you control playback
-without switching apps. No dock icon, no menu bar clutter — just a small,
-draggable, floating widget that sits on top of your other windows.
+[![CI](https://github.com/shazibid/miniplayer/actions/workflows/ci.yml/badge.svg)](https://github.com/shazibid/miniplayer/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Pick from four skins: a Liquid Glass pill, a spinning CD, a classic
-click-wheel iPod, or a spinning vinyl record.
+A floating now-playing widget for macOS. It shows what's playing in
+**Spotify** or **Apple Music**, lets you skip and pause without switching
+apps, and comes in four skins: a Liquid Glass pill, a spinning CD, a spinning
+vinyl record, and a click-wheel iPod.
 
-## Features
+It has no Dock icon and no menu bar item. It's one small borderless window
+that stays on top of everything else.
 
-- **Live now-playing display** — track title, artist, and artwork, polled
-  once per second.
-- **Playback controls** — play/pause, next, previous.
-- **Auto source switching** — watches both Spotify and Apple Music; shows
-  whichever one is actively playing, and falls back to whichever is open if
-  neither is.
-- **Four skins**, switchable from a right-click context menu:
-  - **Glass Pill** — a compact horizontal bar with a Liquid Glass background.
-  - **Rotating CD** — an album-art disc that spins while playing.
-  - **iPod** — a faithful click-wheel iPod, complete with a working wheel
-    (menu / prev / next / play-pause) and an "Up Next" queue screen.
-  - **Vinyl Record** — a spinning record with the artwork as the label.
-- **Queue view** (iPod skin only) — press the wheel's "Menu" button to see
-  upcoming tracks. Works natively for Apple Music. Spotify's AppleScript
-  dictionary has no queue concept at all, so queue support there requires
-  connecting your Spotify account (see below) to pull the queue from
-  Spotify's Web API instead.
-- **Floating, borderless, movable window** — always on top, draggable from
-  anywhere on its background. Remembers your chosen skin, window position,
-  and (for the resizable Glass Pill) its width across launches; a fresh
-  install falls back to the top-right corner of the main screen.
+Not affiliated with, or endorsed by, Apple or Spotify.
+
+## At a glance
+
+- Shows the current track's title, artist, artwork, and elapsed/total time.
+- Play/pause, next, and previous.
+- Follows whichever app is playing (Spotify or Apple Music) automatically.
+- Four skins, chosen from a right-click menu.
+- Long titles scroll, and the title and artist lines scroll in sync.
+- Minimizes to the Dock as a live thumbnail.
+- Remembers your skin, position, and pill width between launches.
+- iPod skin: an "Up Next" queue screen (Apple Music out of the box, Spotify
+  after you connect your account).
+
+## Skins
+
+| Skin | Size | What it is |
+| --- | --- | --- |
+| **Glass Pill** | 320×68, width adjustable | A slim Liquid Glass bar. Drag its left or right edge to stretch it (260–640 pt). At 420 pt or wider it also shows a progress bar. |
+| **CD Player** | 240×300 | Album art as a disc that spins while playing, with title, artist, progress, and controls below. |
+| **Vinyl Record** | 240×300 | A spinning record with the artwork as the label. Same layout as the CD. |
+| **iPod** | ≈193×325 | A click-wheel iPod with a working wheel and a now-playing / "Up Next" screen. |
+
+Switch skins from the right-click menu. The window animates between sizes.
+
+## Controls
+
+| To do this | Do this |
+| --- | --- |
+| Move the widget | Drag it by its background |
+| Change skin | Right-click → pick a skin |
+| Play / pause, next, previous | Click the buttons. On the iPod: bottom or center of the wheel = play/pause, left = previous, right = next |
+| Show the queue (iPod only) | Click the top of the wheel. Click again to go back |
+| Resize (Pill only) | Drag its left or right edge |
+| Minimize | Right-click → **Minimize**. Click the Dock tile to bring it back |
+| Quit | Right-click → **Quit** |
+
+## What works with which app
+
+| | Spotify | Apple Music |
+| --- | --- | --- |
+| Title, artist, artwork, elapsed/total time | Yes | Yes |
+| Play/pause, next, previous | Yes | Yes |
+| "Up Next" queue (iPod skin) | Only after **Connect Spotify Account** (see below) | Yes, the next 15 tracks of the current playlist |
+
+When both apps are open, whichever one is playing wins. If neither is playing,
+the widget shows Spotify first, then Music. If neither is running, it shows
+"Nothing playing" and the controls are disabled.
+
+Not supported: seeking, volume, shuffle/repeat, or browsing a library. The
+progress bar is display-only.
 
 ## Requirements
 
-- **macOS 26 (Tahoe) or later** — the app targets `.macOS(.v26)` and uses the
-  Liquid Glass `glassEffect` API, which doesn't exist on earlier macOS
-  versions.
-- **Xcode 26 / Swift 6.2 toolchain or later** (to build).
-- **Spotify** and/or **Apple Music (Music.app)** — the widget has nothing to
-  show if neither is running.
+- **macOS 26 (Tahoe) or later.** The Glass Pill uses the Liquid Glass
+  `glassEffect` API, and the package targets `.macOS(.v26)`.
+- **Xcode 26 / Swift 6.2** to build.
+- Spotify and/or Music.app.
 
-## Getting started
+## Install
 
-The steps below assume you've never used Terminal, Git, or Xcode before, so
-everything is spelled out in full. If any of this is already familiar, skip
-ahead — experienced folks can just `git clone`, `swift run`, done.
-
-### 1. Install Xcode
-
-Xcode is Apple's free app-building tool. Installing it gives you the Swift
-compiler and everything else needed to build this project — nothing else to
-install separately.
-
-1. Open the **App Store** app (click its icon in the Dock, or press
-   `Cmd + Space`, type `App Store`, press Return).
-2. Search for **Xcode** and click **Get** / the download button. It's a big
-   download (several gigabytes), so this may take a while.
-3. Once installed, open **Xcode** from your Applications folder at least
-   once. It will ask to install some "additional components" — click
-   **Install**, enter your Mac password if prompted, and wait for it to
-   finish. You can then quit Xcode; you won't need to open it again unless
-   you want to.
-
-### 2. Get the project's code onto your Mac
-
-This project's code lives on **GitHub** at
-https://github.com/shazibid/miniplayer. "Cloning" just means downloading a
-copy of it. Pick whichever of these two ways feels easier:
-
-**Option A — Download as a ZIP file (simplest, no extra tools)**
-
-1. Go to https://github.com/shazibid/miniplayer in your web browser.
-2. Click the green **Code** button, then click **Download ZIP**.
-3. Open your **Downloads** folder and double-click the downloaded file to
-   unzip it. You'll end up with a folder named `miniplayer-main`.
-
-**Option B — Use `git clone` (a bit more setup, easier to update later)**
-
-1. Open the **Terminal** app: press `Cmd + Space`, type `Terminal`, press
-   Return. Terminal lets you type commands to your Mac instead of clicking —
-   for this guide you'll only need to copy/paste a couple of lines.
-2. Type the following and press Return to move into your Documents folder
-   (`cd` means "change directory"):
-   ```bash
-   cd ~/Documents
-   ```
-3. Type or paste the following and press Return:
-   ```bash
-   git clone https://github.com/shazibid/miniplayer.git
-   ```
-   This downloads the code into a new folder named `miniplayer` inside
-   Documents. The first time you use `git`, macOS may ask to install
-   "Command Line Developer Tools" — click **Install** and wait for it to
-   finish, then run the command above again.
-
-### 3. Open Terminal inside the project folder
-
-Everything from here on happens in Terminal, run from inside the project
-folder.
-
-1. Open **Terminal** if it isn't already open (`Cmd + Space`, type
-   `Terminal`, press Return).
-2. Type `cd ` — that's "c", "d", then a single space — but **don't press
-   Return yet**.
-3. Switch to **Finder**, find the project folder from step 2
-   (`miniplayer-main` or `miniplayer`), and drag that folder from Finder
-   directly onto the Terminal window. This types out its full location for
-   you.
-4. Click back in Terminal and press Return. Your prompt now represents
-   "inside" the project folder — every command below should be run here.
-
-### 4. Build and run
-
-In that same Terminal window, type:
+There are no prebuilt releases yet, so you build from source.
 
 ```bash
-swift run
+git clone https://github.com/shazibid/miniplayer.git
+cd miniplayer
+swift run Miniplayer
 ```
 
-and press Return. The first run downloads dependencies and compiles the app,
-so it can take a minute or two and a lot of text will scroll by — that's
-normal, just let it finish. Once it's done, the widget appears in the
-top-right corner of your screen.
+The first build takes a minute or two. The widget then appears in the top-right
+corner of your main display.
 
-To use the app again later, repeat steps 3–4: open Terminal, `cd` into the
-project folder (Terminal usually remembers recent folders if you press the
-Up arrow to cycle through previous commands), then `swift run`.
-
-A few notes for later, once you're comfortable with the basics:
-
-- `swift build -c release` produces a faster, optimized build (the binary
-  ends up at `.build/release/Miniplayer`).
-- You can also open the project in **Xcode** (double-click `Package.swift`
-  inside the project folder) or in **VS Code** with the Swift extension — a
-  debug/release launch configuration is already set up in
-  `.vscode/launch.json`.
-
-The app has no windowed dock icon or menu bar item (it runs as an
-`.accessory` app) — after launching, look for the widget in the top-right
-corner of your main screen.
-
-### 5. (Optional) Build a real, double-clickable app
-
-`swift run` is fine for trying it out, but it only lasts for that Terminal
-session and never shows up in `/Applications` or Spotlight. To get an actual
-**Miniplayer.app** you can drag into Applications and launch normally from
-then on:
+### Build a standalone app
 
 ```bash
 ./Packaging/build-app.sh
 ```
 
-This builds a release binary and assembles it into `dist/Miniplayer.app`.
-Drag that into `/Applications` (or wherever you like) and double-click it
-like any other app.
+This produces `dist/Miniplayer.app`. Drag it into `/Applications`.
 
-This build is only **ad-hoc signed**, not notarized by Apple (that requires
-a paid Apple Developer account), so the first time you open it macOS will
-warn that it's from an "unidentified developer" and refuse to launch it
-normally. To get past that once:
+The app is **ad-hoc signed and not notarized**, so macOS blocks it the first
+time. Right-click the app, choose **Open**, then confirm. After that it opens
+normally.
 
-1. **Right-click** (or Control-click) `Miniplayer.app` and choose **Open**.
-2. Click **Open** again in the dialog that appears.
+The project also opens in Xcode (via `Package.swift`) or VS Code with the Swift
+extension. `.vscode/launch.json` has debug and release configurations.
 
-After that first approval, it launches normally every time, including from
-the Dock or Spotlight.
+## First-run setup
 
-### 6. Connect your Spotify account (optional, for Spotify queue support)
+### Allow Automation (required)
 
-Spotify's AppleScript dictionary can't report a queue, so the iPod skin's
-"Up Next" screen shows Spotify tracks only after you connect your account
-via the Spotify Web API:
+Miniplayer reads and controls Spotify and Music through AppleScript. The
+first time it talks to each app, macOS asks for permission. Allow both.
 
-- Right-click the widget (on a trackpad: click with two fingers, or hold
-  `Control` and click) → **Connect Spotify Account…**. This opens your
-  browser to Spotify's login/consent page (Authorization Code + PKCE, so no
-  client secret is involved) and starts a short-lived local server on
-  `127.0.0.1:8888` to catch the redirect.
-- Approve access, and the widget stores a refresh token locally (see
-  `SpotifyTokenStore`) so you don't have to log in again.
-- **Disconnect Spotify Account** (same menu) revokes the local session and
-  clears the stored token.
+If you denied one by mistake, re-enable it in **System Settings → Privacy &
+Security → Automation → Miniplayer**. Without it the widget shows "Nothing
+playing" even while music is playing.
 
-The queue is only shown when Spotify's Web API agrees that this Mac is the
-actively-playing device — if playback was last controlled from another
-device (phone, speaker, etc.), the queue is suppressed rather than shown for
-the wrong session.
+### Connect Spotify (optional, for the iPod queue only)
 
-You can also fetch the queue from the command line without launching the
-widget's window:
+Spotify's AppleScript interface can't report a queue. To see Spotify's "Up
+Next" list on the iPod skin, connect your account:
+
+1. Right-click → **Connect Spotify Account…**
+2. Approve access in the browser window that opens.
+3. The widget stores a refresh token and you stay connected.
+
+Right-click → **Disconnect Spotify Account** removes it.
+
+> **Heads-up:** the Spotify app this project uses is in Spotify's *Development
+> Mode*, which only allows a small list of manually approved accounts. If
+> you're not on that list, Spotify's consent page will reject you and the
+> connect step will time out. Everything else (now playing, controls, all four
+> skins, Apple Music including its queue) works without a Spotify account.
+> Supporting your own Spotify app is on the roadmap.
+
+Details, for the curious:
+
+- Login is OAuth Authorization Code with PKCE. There's no client secret. A
+  short-lived server on `127.0.0.1:8888` catches the redirect.
+- Scopes requested: `user-read-currently-playing` and
+  `user-read-playback-state`. The app can't change your playback through the
+  Web API.
+- The queue only shows if Spotify says this Mac is the active playback device.
+  If your phone or a speaker is driving playback, the iPod screen says "Playing
+  on another device" instead of showing the wrong queue.
+
+## Command line
 
 ```bash
 swift run Miniplayer --print-queue
 ```
 
-This requires Spotify to be running and already connected via the menu
-above; it prints the queue as JSON and exits.
+Prints Spotify's upcoming queue as JSON (`name`, `artist`) and exits, without
+opening a window. It needs Spotify running and your account connected. If the
+active device isn't this Mac it prints `[]` and explains why on stderr.
 
-### 7. Grant Automation permission
+## Data and privacy
 
-Miniplayer talks to Spotify and Music.app via AppleScript, so the first time
-it tries to read a track or send a command, macOS will pop up a dialog
-asking to let Miniplayer control Spotify and/or Music. Click **OK** on each
-one.
+- **Stored on your Mac:** your skin, window position, and pill width in the
+  app's `UserDefaults`, and, only if you connect Spotify, a refresh token at
+  `~/Library/Application Support/Miniplayer/spotify-refresh-token` (file mode
+  `0600`, folder mode `0700`).
+- **Network:** Spotify album art is downloaded from the URL Spotify's app
+  provides. If you connect Spotify, the app also talks to
+  `accounts.spotify.com` and `api.spotify.com`. Nothing else.
+- Apple Music artwork and metadata never leave the machine.
 
-If you miss a prompt or click **Don't Allow** by mistake, you can turn it
-back on by hand:
+## Development
 
-1. Open **System Settings** (click the Apple logo in the top-left corner of
-   your screen → **System Settings…**).
-2. Click **Privacy & Security** in the sidebar.
-3. Click **Automation**.
-4. Find **Miniplayer** in the list and turn on the switches next to
-   **Spotify** and **Music**.
+### Tests
 
-Without this permission the widget will show "Nothing Playing" even while
-music is actively playing.
+**Unit tests** (XCTest through SwiftPM, in `Tests/MiniplayerTests`) cover
+active-source selection, skin and window persistence, AppleScript response
+parsing for both apps, PKCE, the OAuth loopback server, Spotify token storage,
+and the Web API queue matching. They don't need Spotify or Music running.
 
-## Usage
+```bash
+swift test --filter MiniplayerTests
+```
 
-- **Move the widget** — click and drag anywhere on its background.
-- **Switch skins / quit** — right-click anywhere on the widget to open the
-  context menu, then pick a skin or **Quit**.
-- **Playback controls** — click the play/pause, next, and previous buttons
-  (on the iPod skin, these live on the click wheel: top = menu/queue,
-  left/right = previous/next, bottom = play/pause, center = play/pause).
-- **Queue (iPod only)** — press the top of the click wheel to flip the
-  screen to "Up Next". Press again to go back to now-playing.
+**E2E UI tests** (`MiniplayerUITests.xcodeproj`, XCUITest) drive the real
+app: skin switching, playback buttons, and the now-playing labels. XCUITest
+can't run inside a plain `swift test` bundle, hence the separate Xcode
+project. The tests launch a debug build with `MINIPLAYER_UI_TEST=1`, which
+swaps in a fake player (`FakeMediaAppController`) so no real Spotify or Music
+is needed. That fake is `#if DEBUG` only and never compiled into release
+builds.
 
-## Testing
+```bash
+./Packaging/build-app.sh --debug   # builds dist/Miniplayer-Debug.app
+xcodebuild test -project MiniplayerUITests.xcodeproj -scheme MiniplayerUITests -destination 'platform=macOS'
+```
 
-- **Unit tests** (`Tests/MiniplayerTests`, plain XCTest via SwiftPM) cover
-  the parts that don't need a live Spotify/Music session: `PlayerViewModel`'s
-  active-source selection, skin/window persistence, AppleScript-result
-  parsing, PKCE crypto, the OAuth loopback server's request parsing, and
-  Spotify token storage. Run them with:
+The first run on a Mac needs Accessibility permission for whatever process is
+driving the tests (System Settings → Privacy & Security → Accessibility).
 
-  ```bash
-  swift test --filter MiniplayerTests
-  ```
+**CI** (`.github/workflows/ci.yml`) builds and runs the unit tests on every
+push and PR. That job is the merge gate. The E2E job also runs but is still
+advisory (`continue-on-error`) until it has stayed green for a few more PRs.
 
-- **E2E UI tests** (`MiniplayerUITests.xcodeproj`, a real XCUITest UI
-  Testing Bundle — `XCUIApplication` can't run inside a plain `swift test`
-  bundle at all) drive the actual built app: skin switching, playback
-  controls, and the now-playing labels. They run against a **debug** build
-  launched with `MINIPLAYER_UI_TEST=1`, which swaps in a deterministic fake
-  media-app controller (`FakeMediaAppController`, `#if DEBUG`-only — never
-  compiled into the release build people actually download) so there's a
-  track to assert on without Spotify or Music installed. Run them with:
+### How it works
 
-  ```bash
-  ./Packaging/build-app.sh --debug   # produces dist/Miniplayer-Debug.app
-  xcodebuild test -project MiniplayerUITests.xcodeproj -scheme MiniplayerUITests -destination 'platform=macOS'
-  ```
-
-  The first time you run these on a given Mac, macOS will need to grant
-  Accessibility permission (System Settings → Privacy & Security →
-  Accessibility) to whatever process is driving the UI — approve the
-  prompt and re-run.
-
-- **CI** (`.github/workflows/ci.yml`) runs the unit tests on every push/PR
-  as the actual merge gate. It also runs the E2E suite, but that job is
-  advisory (`continue-on-error`) rather than blocking — GitHub's hosted
-  runners are fresh, ephemeral VMs, and it's unverified whether the
-  Accessibility permission XCUITest needs is available there out of the box.
-
-## How it works
-
-- `PlayerViewModel` polls every second on a background task, asking each
+- **Polling.** `PlayerViewModel` polls every second on a background task. Each
   registered `MediaAppController` (`SpotifyController`, `AppleMusicController`)
-  whether its app is running and, if so, its current track/state/position.
-  Whichever app is actively playing wins; if both are just open and paused,
-  the first one in registration order is shown.
-- Each controller talks to its app entirely through `NSAppleScript` —
-  there's no official Spotify or Music SDK involved, just the same scripting
-  dictionaries Script Editor / Shortcuts can use.
-- Artwork differs by source: Spotify hands back a URL that's fetched over
-  HTTP, while Music.app only exposes raw artwork bytes through AppleScript.
-- The window is a borderless, floating, always-on-top `NSWindow` hosting a
-  SwiftUI view. Skin changes animate the window's frame and the SwiftUI
-  content together so the resize reads as one motion.
-- **Spotify queue** is the one thing AppleScript can't provide, so it's
-  fetched separately via the Spotify Web API instead. `SpotifyAuthManager`
-  runs an Authorization Code + PKCE login (browser consent + a short-lived
-  loopback HTTP server to catch the redirect), storing only a refresh token
-  on disk via `SpotifyTokenStore` (a permissions-locked file rather than the
-  system Keychain — see that file for why). `SpotifyWebAPI` exchanges that
-  for an access token on demand and hits the `/me/player/queue` endpoint,
-  discarding the result if the API's notion of "currently playing" doesn't
-  match what this Mac's local Spotify client is reporting (i.e. some other
-  device is actually driving playback).
+  reports whether its app is running, plus its state, track, and playback
+  position. The one that's playing wins.
+- **AppleScript, not SDKs.** Both controllers use `NSAppleScript`, the same
+  scripting dictionaries Script Editor uses. Spotify returns an artwork URL that
+  the widget downloads. Music.app only exposes raw artwork bytes.
+- **The window.** A borderless, floating, all-Spaces `NSWindow` hosting SwiftUI.
+  Skin changes animate the window frame and the SwiftUI content together.
+- **Text scrolling.** `MarqueeText` scrolls titles that don't fit. A shared
+  `MarqueeSync` makes sibling lines (title and artist) rest and restart
+  together.
+- **Spotify queue.** `SpotifyAuthManager` runs the PKCE login, `SpotifyTokenStore`
+  keeps the refresh token in a permission-locked file (not the Keychain, whose
+  code-signature check would re-prompt on every debug rebuild), and
+  `SpotifyWebAPI` fetches `/me/player/queue` and discards it if the active
+  device isn't this Mac.
 
-## Project structure
+### Project structure
 
 ```
 Sources/Miniplayer/
-├── main.swift                 # App entry point, NSWindow/NSApplication setup, --print-queue CLI
-├── PlayerViewModel.swift      # Polling loop, active-source selection, playback actions
-├── MediaAppController.swift   # Shared protocol + Track/QueueTrack/PlayerState/QueueFetchResult models
-├── SpotifyController.swift    # Spotify AppleScript bridge
-├── AppleMusicController.swift # Music.app AppleScript bridge
-├── WidgetSkin.swift           # Skin enum + persisted skin/position/pill-width (SkinStore)
-├── RootView.swift             # Skin switcher + right-click context menu (incl. Spotify connect/disconnect)
-├── PillView.swift             # Glass Pill skin
-├── RotatingCDView.swift       # Rotating CD skin
-├── VinylView.swift            # Vinyl Record skin
-├── SpinningDiscSkin.swift     # Shared chrome (rotation, labels, controls) for CD + Vinyl
-├── IPodView.swift             # Click-wheel iPod skin (now-playing + queue screens)
-├── PlaybackControlButtons.swift # Shared skip/play-pause/skip row (Pill, CD, Vinyl)
-├── MarqueeText.swift          # Auto-scrolling text for long titles
-├── AccessibilityID.swift      # Identifier constants for the E2E UI test suite
-├── Testing/
-│   └── FakeMediaAppController.swift   # #if DEBUG fake player, drives unit + E2E tests
-├── Spotify/
-│   ├── SpotifyAuthConfig.swift        # Client ID, redirect URI/port, OAuth scopes
-│   ├── SpotifyAuthManager.swift       # PKCE login/refresh, in-memory access token
-│   ├── SpotifyTokenStore.swift        # Refresh token persistence (permissions-locked file)
-│   ├── LoopbackCallbackServer.swift   # Local HTTP server that catches the OAuth redirect
-│   └── SpotifyWebAPI.swift            # `/me/player/queue` fetch + active-device matching
-└── Resources/
-    └── ipod-body.png          # Device artwork used by the iPod skin
+├── main.swift                     # App entry, window setup, --print-queue
+├── PlayerViewModel.swift          # Polling, source selection, playback actions
+├── MediaAppController.swift       # Controller protocol + Track/QueueTrack/PlayerState models
+├── SpotifyController.swift        # Spotify AppleScript bridge
+├── AppleMusicController.swift     # Music.app AppleScript bridge
+├── WidgetSkin.swift               # Skin enum, sizes, persisted skin/position/pill width
+├── RootView.swift                 # Skin switch + right-click menu
+├── PillView.swift                 # Glass Pill skin
+├── RotatingCDView.swift           # CD skin
+├── VinylView.swift                # Vinyl skin
+├── SpinningDiscSkin.swift         # Shared layout for CD + Vinyl
+├── IPodView.swift                 # iPod skin (now playing + queue screen)
+├── PlaybackControlButtons.swift   # Shared back / play-pause / forward row
+├── PlaybackProgressView.swift     # Shared elapsed / bar / duration readout
+├── MarqueeText.swift              # Scrolling text
+├── MarqueeSync.swift              # Keeps sibling marquee lines in step
+├── AccessibilityID.swift          # Identifiers used by the E2E tests
+├── Testing/FakeMediaAppController.swift  # #if DEBUG fake player
+├── Spotify/                       # Auth config, PKCE login, token store, loopback server, Web API
+└── Resources/ipod-body.png        # iPod artwork
 
 Tests/
-├── MiniplayerTests/          # Unit tests (SwiftPM test target, `swift test`)
-└── MiniplayerUITests/        # E2E source, built/run via MiniplayerUITests.xcodeproj
+├── MiniplayerTests/              # Unit tests (swift test)
+└── MiniplayerUITests/            # E2E sources (run via MiniplayerUITests.xcodeproj)
 
 Packaging/
-├── build-app.sh                # Assembles dist/Miniplayer(-Debug).app (see --debug)
-├── Info.plist                  # App bundle metadata (bundle ID, version, permission strings)
-└── AppIcon.icns                # App icon (placeholder — see Known limitations)
+├── build-app.sh                   # Builds dist/Miniplayer(-Debug).app
+├── Info.plist                     # Bundle ID, version, permission text
+└── AppIcon.icns                   # Placeholder icon
 ```
 
 ## Known limitations
 
-- **macOS only**, and specifically macOS 26+ (Liquid Glass dependency).
-- **Spotify has no queue via AppleScript** — its scripting dictionary only
-  exposes the current track, so the iPod skin's "Up Next" screen falls back
-  to the Spotify Web API (see above), which requires connecting your account
-  once. Without connecting, Spotify's queue screen shows an explanatory
-  message instead of a list.
-- **Spotify queue reflects the active Spotify Connect device**, not
-  necessarily this Mac — if another device last touched playback, the queue
-  is suppressed rather than shown for the wrong session.
-- No Apple Music API integration — Apple Music support is local AppleScript
-  only, so it only reflects the Music.app instance actually running on your
-  Mac.
-- **The prebuilt app is ad-hoc signed only, not notarized**, and that's
-  expected to stay true — Apple notarization requires a paid Developer ID
-  account, which isn't planned. A freshly downloaded/built copy will always
-  need one right-click-Open to get past Gatekeeper (see step 5 above).
-- **`Packaging/AppIcon.icns` is a placeholder** generated directly from the
-  iPod skin's artwork — worth swapping for original artwork before any wider
-  release, for the same reasons as the skin itself.
+- macOS 26+ only. There's no fallback for the Glass Pill on older systems yet.
+- Spotify's queue needs an approved account (see the Development Mode note
+  above) and only appears when this Mac is the active device.
+- The queue is only shown in the iPod skin.
+- Apple Music support is local-only. There's no Apple Music API, and radio or
+  algorithmic playback has no queue to show.
+- Only the Pill can be resized. Progress is display-only, with no seeking.
+- The app is ad-hoc signed and not notarized, so first launch needs
+  right-click → Open.
+- `Packaging/AppIcon.icns` is a placeholder made from the iPod skin's artwork.
+
+## Roadmap
+
+Planned or under consideration (see [TODO.md](TODO.md) for the full list):
+
+- A user-supplied Spotify client ID, so anyone can connect regardless of
+  Spotify's Development Mode cap.
+- A fallback look for macOS versions without Liquid Glass.
+- iPod stickers and an editor for customizing the iPod.
+- An "Open Spotify" button and volume control.
+- Signed and notarized releases.
 
 ## License
 
