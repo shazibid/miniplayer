@@ -48,7 +48,12 @@ struct RootView: View {
         .simultaneousGesture(
             DragGesture(minimumDistance: 2)
                 .onChanged { _ in
-                    guard let window = widgetWindow else { return }
+                    // IPodView flips `isMovableByWindowBackground` to `false`
+                    // while the pointer is over its queue scrollbar thumb, so
+                    // dragging the thumb doesn't also drag the window. Gating
+                    // on the same flag keeps that contract without IPodView
+                    // needing to know this gesture exists.
+                    guard let window = widgetWindow, window.isMovableByWindowBackground else { return }
                     let mouse = NSEvent.mouseLocation
                     let start = windowDragStart ?? (window.frame.origin, mouse)
                     windowDragStart = start
