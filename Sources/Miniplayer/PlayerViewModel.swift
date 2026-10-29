@@ -55,6 +55,17 @@ final class PlayerViewModel: ObservableObject {
     private var lastArtworkKey: String?
     private var isQueueVisible = false
     private var lastQueueTrackKey: String?
+    /// Bumped on every `fetchQueue()` so a slow, superseded fetch (e.g. from
+    /// two quick skips) can't land after a newer one and overwrite it.
+    private var queueFetchGeneration = 0
+
+    /// How long to wait before re-asking when a queue fetch reports another
+    /// device as active. Right after a skip, this Mac's client (read via
+    /// AppleScript) already has the new track while Spotify's Web API still
+    /// reports the old one for a second or two — which looks exactly like
+    /// another device driving playback. Only a mismatch that survives these
+    /// retries is treated as real. Internal so tests can shorten it.
+    var queueMismatchRetryDelays: [Duration] = [.seconds(1), .seconds(2)]
 
     func startPolling() {
         refresh()
@@ -111,10 +122,20 @@ final class PlayerViewModel: ObservableObject {
             return
         }
         isLoadingQueue = true
+        queueFetchGeneration += 1
+        let generation = queueFetchGeneration
         let localTrack = track
+        let retryDelays = queueMismatchRetryDelays
         Task.detached(priority: .userInitiated) { [weak self] in
-            let result = await controller.queue(matching: localTrack)
+            var result = await controller.queue(matching: localTrack)
+            for delay in retryDelays {
+                guard case .otherDeviceActive = result else { break }
+                try? await Task.sleep(for: delay)
+                guard await self?.queueFetchGeneration == generation else { return }
+                result = await controller.queue(matching: localTrack)
+            }
             await MainActor.run {
+                guard self?.queueFetchGeneration == generation else { return }
                 switch result {
                 case .tracks(let tracks):
                     self?.queue = tracks

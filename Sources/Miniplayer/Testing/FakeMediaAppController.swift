@@ -22,6 +22,10 @@ enum FakeMediaAppController: MediaAppController {
     nonisolated(unsafe) static var positionValue: TimeInterval = 30
     nonisolated(unsafe) static var supportsQueue = true
     nonisolated(unsafe) static var queueResult: QueueFetchResult = .tracks([])
+    /// Returned one per `queue(matching:)` call, in order, before falling
+    /// back to `queueResult` — for simulating a result that changes between
+    /// retries.
+    nonisolated(unsafe) static var queueResultSequence: [QueueFetchResult] = []
 
     static func isRunning() -> Bool { isRunningValue }
     static func currentTrack() -> Track? { trackValue }
@@ -30,7 +34,9 @@ enum FakeMediaAppController: MediaAppController {
     static func playPause() { stateValue = (stateValue == .playing) ? .paused : .playing }
     static func next() {}
     static func previous() {}
-    static func queue(matching localTrack: Track?) async -> QueueFetchResult { queueResult }
+    static func queue(matching localTrack: Track?) async -> QueueFetchResult {
+        queueResultSequence.isEmpty ? queueResult : queueResultSequence.removeFirst()
+    }
 
     /// Restores known defaults — call from `setUp`/launch so tests don't
     /// leak state into each other via these shared statics.
@@ -41,6 +47,7 @@ enum FakeMediaAppController: MediaAppController {
         positionValue = 30
         supportsQueue = true
         queueResult = .tracks([])
+        queueResultSequence = []
     }
 }
 #endif

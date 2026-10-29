@@ -136,6 +136,7 @@ final class PlayerViewModelTests: XCTestCase {
         PlayerViewModel.useControllers([FakeMediaAppController.self])
 
         let viewModel = PlayerViewModel()
+        viewModel.queueMismatchRetryDelays = [.milliseconds(10)]
         viewModel.refresh()
         await waitUntil { viewModel.track != nil }
 
@@ -143,5 +144,25 @@ final class PlayerViewModelTests: XCTestCase {
         await waitUntil { viewModel.isQueueOnOtherDevice }
 
         XCTAssertTrue(viewModel.queue.isEmpty)
+    }
+
+    /// Right after a skip, Spotify's Web API briefly still reports the old
+    /// track, which reads as "another device is active." A retry that then
+    /// matches should show the queue, never the other-device message.
+    func testTransientOtherDeviceMismatchIsRetried() async {
+        FakeMediaAppController.queueResultSequence = [.otherDeviceActive]
+        FakeMediaAppController.queueResult = .tracks([QueueTrack(name: "Up Next", artist: "Someone")])
+        PlayerViewModel.useControllers([FakeMediaAppController.self])
+
+        let viewModel = PlayerViewModel()
+        viewModel.queueMismatchRetryDelays = [.milliseconds(10)]
+        viewModel.refresh()
+        await waitUntil { viewModel.track != nil }
+
+        viewModel.setQueueVisible(true)
+        await waitUntil { !viewModel.queue.isEmpty }
+
+        XCTAssertEqual(viewModel.queue.first?.name, "Up Next")
+        XCTAssertFalse(viewModel.isQueueOnOtherDevice)
     }
 }
