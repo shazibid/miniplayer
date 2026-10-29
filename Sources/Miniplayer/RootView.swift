@@ -6,7 +6,9 @@ struct RootView: View {
     @ObservedObject var skinStore: SkinStore
     var onMinimize: () -> Void
 
-    @State private var dragStartOrigin: NSPoint?
+    /// Window origin and mouse position (both in screen coordinates) when
+    /// the current window drag began; `nil` between drags.
+    @State private var windowDragStart: (origin: NSPoint, mouse: NSPoint)?
 
     /// This app has exactly one window, so there's no ambiguity to resolve —
     /// just find it by type rather than plumbing a reference down through
@@ -32,38 +34,36 @@ struct RootView: View {
         // clipped as the border grows/shrinks to meet it.
         .transition(.identity)
         .contentShape(Rectangle())
-        // `window.isMovableByWindowBackground` (set in main.swift) is the
-        // normal way to drag a borderless/titleless window, but it only
-        // kicks in when AppKit sees no view handle the mouse-down at all —
-        // and `.contextMenu` below installs a click/press recognizer across
-        // this entire shape to detect right-clicks, which is enough to
-        // defeat that heuristic for every click, not just right ones.
-        // Dragging the window explicitly here, via `.simultaneousGesture`
-        // (so it doesn't steal clicks from the buttons inside), sidesteps
-        // the heuristic rather than depending on it.
+        // `window.isMovableByWindowBackground` (set in main.swift) only kicks
+        // in when no view claims the mouse-down, and `.contextMenu` below
+        // claims every click on this shape to watch for right-clicks — so on
+        // its own the window can't be dragged at all. This drags it
+        // explicitly instead; `.simultaneousGesture` keeps it from stealing
+        // clicks from the buttons inside.
+        //
+        // Deltas come from `NSEvent.mouseLocation` (screen coordinates), not
+        // `value.translation`: the gesture measures in the view's own space,
+        // which moves along with the window, so its translation would chase
+        // its own tail and jitter.
         .simultaneousGesture(
             DragGesture(minimumDistance: 2)
-                .onChanged { value in
-                    // `isMovableByWindowBackground` no longer drives the
-                    // window-drag itself (see above), but IPodView still
-                    // flips it to `false` while the pointer is over its
-                    // queue scrollbar thumb, to keep that thumb's own drag
-                    // from also dragging the window underneath it. Reusing
-                    // the same flag here as a gate keeps that contract
-                    // intact without IPodView needing to know this gesture
-                    // exists.
+                .onChanged { _ in
+                    // IPodView flips `isMovableByWindowBackground` to `false`
+                    // while the pointer is over its queue scrollbar thumb, so
+                    // dragging the thumb doesn't also drag the window. Gating
+                    // on the same flag keeps that contract without IPodView
+                    // needing to know this gesture exists.
                     guard let window = widgetWindow, window.isMovableByWindowBackground else { return }
-                    let startOrigin = dragStartOrigin ?? window.frame.origin
-                    if dragStartOrigin == nil {
-                        dragStartOrigin = startOrigin
-                    }
+                    let mouse = NSEvent.mouseLocation
+                    let start = windowDragStart ?? (window.frame.origin, mouse)
+                    windowDragStart = start
                     window.setFrameOrigin(NSPoint(
-                        x: startOrigin.x + value.translation.width,
-                        y: startOrigin.y - value.translation.height
+                        x: start.origin.x + mouse.x - start.mouse.x,
+                        y: start.origin.y + mouse.y - start.mouse.y
                     ))
                 }
                 .onEnded { _ in
-                    dragStartOrigin = nil
+                    windowDragStart = nil
                 }
         )
         .contextMenu {
