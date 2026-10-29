@@ -8,6 +8,9 @@ struct IPodView: View {
     @ObservedObject var viewModel: PlayerViewModel
 
     @State private var showingQueue = false
+    @State private var queueScrollMetrics = QueueScrollMetrics()
+    @State private var queueScrollPosition = ScrollPosition()
+    @State private var queueThumbDragStartOffset: CGFloat?
     @StateObject private var marqueeSync = MarqueeSync()
 
     private let bodyWidth: CGFloat = 210
@@ -85,7 +88,36 @@ struct IPodView: View {
 
             screen
                 .frame(width: screenSize.width, height: screenSize.height)
+                // `nowPlayingScreen`'s artwork uses `aspectRatio(.fill)`,
+                // which routinely overflows `screenSize` on one axis by
+                // design — this clip is load-bearing for it, unlike almost
+                // everything else here. (An earlier version of this comment
+                // claimed it was a no-op and removed it to let the scroll
+                // thumb overflow into the bezel margin below; that broke
+                // artwork cropping, visibly. The thumb overlay is attached
+                // further down instead, since content added after a
+                // `.clipShape` isn't itself subject to it.)
                 .clipShape(RoundedRectangle(cornerRadius: 0, style: .continuous))
+                // `.topLeading`, with the thumb positioning itself via
+                // explicit offsets from there — unlike `.topTrailing`, this
+                // doesn't silently assume the thumb should hug `screen`'s own
+                // top edge, which is wrong now that the thumb needs to know
+                // the queue ScrollView's actual (header-offset) position.
+                //
+                // This has to come *before* `.position()`, not after:
+                // `.position()` makes the preceding view report an
+                // effectively unbounded layout frame to whatever follows it
+                // (that's how it can place fixed-size content at an
+                // arbitrary point), so an `.overlay` chained afterward
+                // resolves its alignment against that huge frame instead of
+                // `screenSize` — which is exactly what was happening here
+                // (confirmed by logging the actual numbers: the thumb landed
+                // tens of points off from where the math said it should).
+                .overlay(alignment: .topLeading) {
+                    if showingQueue {
+                        queueScrollThumb
+                    }
+                }
                 .position(x: screenOrigin.x + screenSize.width / 2, y: screenOrigin.y + screenSize.height / 2)
 
             wheelHitTargets
@@ -202,6 +234,18 @@ struct IPodView: View {
             } else if viewModel.queue.isEmpty {
                 queueMessage(viewModel.isLoadingQueue ? "Loading…" : "No Upcoming Tracks")
             } else {
+                // The system scroll indicator is hidden in favor of a
+                // hand-drawn one (`queueScrollThumb`) pinned to the screen's
+                // true trailing edge. AppKit's own indicator, at least under
+                // "Show scroll bars: Always", renders its whole track
+                // (thumb + groove) inset a further track-width's worth of
+                // space short of the ScrollView's actual edge — a fixed
+                // AppKit-level margin no combination of `.padding`,
+                // `.contentMargins`, or explicit `.frame(maxWidth:)` on the
+                // content could budge (confirmed by pixel-diffing screenshots
+                // across all three). Drawing our own is the only way to get
+                // it flush, and matches the original click-wheel iPod's own
+                // list screens anyway, which never used a system scroller.
                 ScrollView {
                     VStack(alignment: .leading, spacing: 7) {
                         ForEach(viewModel.queue) { track in
@@ -217,11 +261,141 @@ struct IPodView: View {
                             }
                         }
                     }
-                    .padding(.horizontal, 8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.vertical, 6)
                 }
+                // `.never`, not `.hidden` — `.hidden` still yields to the
+                // user's "Show scroll bars: Always" preference (confirmed:
+                // that setting is on here), which is exactly the system
+                // indicator this custom thumb replaces.
+                .scrollIndicators(.never)
+                .contentMargins(.horizontal, 8)
+                .scrollPosition($queueScrollPosition)
+                .onScrollGeometryChange(for: QueueScrollMetrics.self) { geometry in
+                    QueueScrollMetrics(
+                        offsetY: geometry.contentOffset.y,
+                        contentHeight: geometry.contentSize.height,
+                        containerHeight: geometry.containerSize.height
+                    )
+                } action: { _, newValue in
+                    queueScrollMetrics = newValue
+                }
+                // The thumb itself is overlaid higher up, on `screen` rather
+                // than here — see the comment at that call site for why.
             }
         }
+    }
+
+    /// A thin proportional scrollbar drawn by hand (see the comment above its
+    /// only call site for why) — sized and positioned from scroll geometry
+    /// the same way a system indicator would be, just pinned to the screen's
+    /// actual edge instead of AppKit's own inset. Draggable: since it's a
+    /// hand-drawn overlay rather than a real NSScroller, dragging it doesn't
+    /// move anything on its own — pushing the computed offset through
+    /// `.scrollPosition` is what actually scrolls the list, mirroring what
+    /// AppKit does internally for a real scroller thumb.
+    private var queueScrollThumb: some View {
+        let metrics = queueScrollMetrics
+        let visibleFraction = metrics.contentHeight > 0
+            ? min(1, metrics.containerHeight / metrics.contentHeight)
+            : 1
+        let thumbHeight = max(20, metrics.containerHeight * visibleFraction)
+        let maxScrollableOffset = max(0, metrics.contentHeight - metrics.containerHeight)
+        let scrollFraction = maxScrollableOffset > 0
+            ? min(1, max(0, metrics.offsetY / maxScrollableOffset))
+            : 0
+        let thumbOffsetY = max(0, metrics.containerHeight - thumbHeight) * scrollFraction
+        let trackRange = max(1, metrics.containerHeight - thumbHeight)
+        // The ScrollView sits below the "UP NEXT" header within `screen`,
+        // but the thumb is overlaid directly on `screen` (see that call
+        // site), which knows nothing about the header. The VStack gives the
+        // header its own ideal height and lets the ScrollView fill whatever
+        // is left, so this is just that arithmetic run in reverse.
+        let headerHeight = screenSize.height - metrics.containerHeight
+
+        return Group {
+            if visibleFraction < 1 {
+                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .fill(.white.opacity(0.4))
+                    .frame(width: 10, height: thumbHeight)
+                    // Widens the drag/click target beyond the visible bar —
+                    // 10pt is fine to look at, but fiddly to grab precisely.
+                    // `alignment: .trailing` is the important part: a bare
+                    // `.frame` defaults to `.center`, which would leave the
+                    // 10pt bar sitting in the middle of this 20pt box —
+                    // flush on neither edge (the original bug this thumb
+                    // exists to fix).
+                    .frame(width: 20, height: thumbHeight, alignment: .trailing)
+                    .contentShape(Rectangle())
+                // This is overlaid `.topLeading` on `screen` (see that call
+                // site), so both axes are explicit offsets from `screen`'s
+                // own top-left corner rather than alignment-derived:
+                //  - x: screenSize.width lands the (right-aligned, see
+                //    above) bar at the ScrollView's true trailing edge; the
+                //    extra `screenBorderPadding.width` pushes it further,
+                //    past that invisible inner-content boundary, to the true
+                //    edge of the black bezel rect — what actually reads,
+                //    visually, as "the edge of the display".
+                //  - y: `headerHeight` accounts for the "UP NEXT" header
+                //    sitting above the ScrollView, which the thumb would
+                //    otherwise ignore and render under.
+                .offset(
+                    x: screenSize.width - 20 + screenBorderPadding.width,
+                    y: headerHeight + thumbOffsetY
+                )
+                // The window is `.isMovableByWindowBackground` (no title bar
+                // to drag from otherwise — see main.swift), which otherwise
+                // wins the race against this gesture on mouse-down and drags
+                // the whole window instead of the thumb. Turning it off
+                // while the pointer is over the thumb — before any
+                // mouseDown can happen — avoids that race entirely. (A
+                // custom `NSViewRepresentable` overriding
+                // `mouseDownCanMoveWindow` was tried first; it didn't
+                // actually suppress the window drag, confirmed by testing —
+                // SwiftUI's own hosting view intercepts the hit-test before
+                // AppKit ever reaches an embedded subview.)
+                .onHover { hovering in
+                    widgetWindow?.isMovableByWindowBackground = !hovering
+                }
+                // If the queue shrinks enough to hide this thumb while the
+                // mouse is still over it (e.g. the queue updates mid-hover),
+                // `onHover`'s exit never fires — the view is just gone. Without
+                // this, `isMovableByWindowBackground` would stay stuck `false`
+                // and the whole window would become permanently undraggable.
+                .onDisappear {
+                    widgetWindow?.isMovableByWindowBackground = true
+                }
+                .gesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { value in
+                            let startOffset = queueThumbDragStartOffset ?? metrics.offsetY
+                            if queueThumbDragStartOffset == nil {
+                                queueThumbDragStartOffset = startOffset
+                            }
+                            let deltaOffset = (value.translation.height / trackRange) * maxScrollableOffset
+                            let newOffset = min(max(0, startOffset + deltaOffset), maxScrollableOffset)
+                            queueScrollPosition.scrollTo(y: newOffset)
+                        }
+                        .onEnded { _ in
+                            queueThumbDragStartOffset = nil
+                            widgetWindow?.isMovableByWindowBackground = true
+                        }
+                )
+            }
+        }
+    }
+
+    private struct QueueScrollMetrics: Equatable {
+        var offsetY: CGFloat = 0
+        var contentHeight: CGFloat = 0
+        var containerHeight: CGFloat = 0
+    }
+
+    /// This app has exactly one window, so there's no ambiguity to resolve —
+    /// just find it by type rather than plumbing a reference down through
+    /// the view hierarchy.
+    private var widgetWindow: NSWindow? {
+        NSApp.windows.first { $0 is FloatingWidgetWindow }
     }
 
     private func queueMessage(_ text: String) -> some View {

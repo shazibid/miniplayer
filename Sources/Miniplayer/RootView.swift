@@ -1,9 +1,19 @@
+import AppKit
 import SwiftUI
 
 struct RootView: View {
     @ObservedObject var viewModel: PlayerViewModel
     @ObservedObject var skinStore: SkinStore
     var onMinimize: () -> Void
+
+    @State private var dragStartOrigin: NSPoint?
+
+    /// This app has exactly one window, so there's no ambiguity to resolve —
+    /// just find it by type rather than plumbing a reference down through
+    /// the view hierarchy.
+    private var widgetWindow: NSWindow? {
+        NSApp.windows.first { $0 is FloatingWidgetWindow }
+    }
 
     var body: some View {
         Group {
@@ -22,6 +32,40 @@ struct RootView: View {
         // clipped as the border grows/shrinks to meet it.
         .transition(.identity)
         .contentShape(Rectangle())
+        // `window.isMovableByWindowBackground` (set in main.swift) is the
+        // normal way to drag a borderless/titleless window, but it only
+        // kicks in when AppKit sees no view handle the mouse-down at all —
+        // and `.contextMenu` below installs a click/press recognizer across
+        // this entire shape to detect right-clicks, which is enough to
+        // defeat that heuristic for every click, not just right ones.
+        // Dragging the window explicitly here, via `.simultaneousGesture`
+        // (so it doesn't steal clicks from the buttons inside), sidesteps
+        // the heuristic rather than depending on it.
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 2)
+                .onChanged { value in
+                    // `isMovableByWindowBackground` no longer drives the
+                    // window-drag itself (see above), but IPodView still
+                    // flips it to `false` while the pointer is over its
+                    // queue scrollbar thumb, to keep that thumb's own drag
+                    // from also dragging the window underneath it. Reusing
+                    // the same flag here as a gate keeps that contract
+                    // intact without IPodView needing to know this gesture
+                    // exists.
+                    guard let window = widgetWindow, window.isMovableByWindowBackground else { return }
+                    let startOrigin = dragStartOrigin ?? window.frame.origin
+                    if dragStartOrigin == nil {
+                        dragStartOrigin = startOrigin
+                    }
+                    window.setFrameOrigin(NSPoint(
+                        x: startOrigin.x + value.translation.width,
+                        y: startOrigin.y - value.translation.height
+                    ))
+                }
+                .onEnded { _ in
+                    dragStartOrigin = nil
+                }
+        )
         .contextMenu {
             ForEach(WidgetSkin.allCases) { option in
                 Button {
